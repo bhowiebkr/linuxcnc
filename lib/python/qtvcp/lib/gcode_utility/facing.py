@@ -7,30 +7,52 @@ import atexit
 import shutil
 
 from PyQt5 import QtGui, QtWidgets, uic
-from PyQt5.QtCore import QFile, QRegExp
+from PyQt5.QtCore import QFile, QRegExp, pyqtSignal
 from PyQt5.QtWidgets import QFileDialog, QMessageBox
 
-from linuxcnc import OPERATOR_ERROR, NML_ERROR
-from qtvcp.core import Info, Status, Action
+# rom linuxcnc import OPERATOR_ERROR, NML_ERROR
+# from qtvcp.core import Info, Status, Action
+
+
+class Info:
+    IMAGE_PATH = ""
+
+    def get_error_safe_setting(self, DISPLAY, DEFAULT_SPINDLE_0_SPEED, hmm):
+        return None
+
+
+class Status:
+    def is_metric_mode(self):
+        return True
+
+
+class Action:
+    pass
+
+
+class OPERATOR_ERROR:
+    pass
+
 
 INFO = Info()
 STATUS = Status()
 ACTION = Action()
 HERE = os.path.dirname(os.path.abspath(__file__))
-IMAGES = os.path.join(INFO.IMAGE_PATH, 'gcode_utility')
+IMAGES = os.path.join(INFO.IMAGE_PATH, "gcode_utility")
+
 
 class Facing(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super(Facing, self).__init__(parent)
         # Load the widgets UI file:
-        self.filename = os.path.join(HERE, 'facing.ui')
+        self.filename = os.path.join(HERE, "facing.ui")
         try:
             self.instance = uic.loadUi(self.filename, self)
         except AttributeError as e:
             print("Error: ", e)
 
         # set up Help messagebox
-        help_file = open(os.path.join(HERE,"facing_help.txt"), "r")
+        help_file = open(os.path.join(HERE, "facing_help.txt"), "r")
         help_text = help_file.read()
         self.mb = QMessageBox()
         self.mb.setIcon(QMessageBox.Information)
@@ -38,22 +60,21 @@ class Facing(QtWidgets.QWidget):
         self.mb.setText(help_text)
         self.mb.setStandardButtons(QMessageBox.Ok)
 
-        
         # Initial values
         self._tmp = None
         self.unit_code = "G21"
         if not STATUS.is_metric_mode():
             self.unit_code = "G20"
             self.rbtn_inch.click()
-        self.rpm = INFO.get_error_safe_setting("DISPLAY", "DEFAULT_SPINDLE_0_SPEED", 500)
+        self.rpm = 24000
         self.size_x = 100
         self.size_y = 100
-        self.feedrate = 0
+        self.feedrate = 1000
         self.stepover = 5 if STATUS.is_metric_mode() else 0.5
         self.tool_dia = 10 if STATUS.is_metric_mode() else 1
         self.safe_z = 20.0 if STATUS.is_metric_mode() else 1
         self.valid = True
-        self.units_text = ''
+        self.units_text = ""
 
         self.units_changed()
 
@@ -64,11 +85,10 @@ class Facing(QtWidgets.QWidget):
         self.lineEdit_stepover.setText(str(self.stepover))
         self.lineEdit_size_x.setText(str(self.size_x))
         self.lineEdit_size_y.setText(str(self.size_y))
-        self.lineEdit_comment.setText('Face slabbing Program')
+        self.lineEdit_comment.setText("Face slabbing Program")
 
-        self.checked = QtGui.QPixmap(os.path.join(IMAGES, 'checked.png'))
-        self.unchecked = QtGui.QPixmap(os.path.join(IMAGES, 'unchecked.png'))
-
+        self.checked = QtGui.QPixmap(os.path.join(IMAGES, "checked.png"))
+        self.unchecked = QtGui.QPixmap(os.path.join(IMAGES, "unchecked.png"))
 
         # signal connections
         self.btn_validate.clicked.connect(self.validate)
@@ -97,21 +117,21 @@ class Facing(QtWidgets.QWidget):
         self.lbl_tool_unit.setText(text)
         self.lbl_stepover_unit.setText(text)
         self.lbl_size_unit.setText(text)
-        self.units_text = ("**NOTE - All units are in {}".format(text))
+        self.units_text = "**NOTE - All units are in {}".format(text)
         self.set_validator()
 
     def set_validator(self):
         # set valid input formats for lineEdits
         if self.rbtn_inch.isChecked():
-            valid_size = QtGui.QRegExpValidator(QRegExp('[0-9]{0,6}[.][0-9]{0,4}'))
-            valid_step = QtGui.QRegExpValidator(QRegExp('[0-9]{0,6}[.][0-9]{0,2}'))
-            valid_feed = QtGui.QRegExpValidator(QRegExp('[0-9]{0,6}[.][0-9]{0,3}'))
+            valid_size = QtGui.QRegExpValidator(QRegExp("[0-9]{0,6}[.][0-9]{0,4}"))
+            valid_step = QtGui.QRegExpValidator(QRegExp("[0-9]{0,6}[.][0-9]{0,2}"))
+            valid_feed = QtGui.QRegExpValidator(QRegExp("[0-9]{0,6}[.][0-9]{0,3}"))
         else:
-            valid_size = QtGui.QRegExpValidator(QRegExp('[0-9]{0,6}[.][0-9]{0,3}'))
-            valid_step = QtGui.QRegExpValidator(QRegExp('[0-9]{0,5}[.][0-9]{0,1}'))
-            valid_feed = QtGui.QRegExpValidator(QRegExp('[0-9]{0,5}[.][0-9]{0,1}'))
+            valid_size = QtGui.QRegExpValidator(QRegExp("[0-9]{0,6}[.][0-9]{0,3}"))
+            valid_step = QtGui.QRegExpValidator(QRegExp("[0-9]{0,5}[.][0-9]{0,1}"))
+            valid_feed = QtGui.QRegExpValidator(QRegExp("[0-9]{0,5}[.][0-9]{0,1}"))
         self.lineEdit_tool.setValidator(valid_size)
-        self.lineEdit_spindle.setValidator(QtGui.QRegExpValidator(QRegExp('[0-9]{0,5}')))
+        self.lineEdit_spindle.setValidator(QtGui.QRegExpValidator(QRegExp("[0-9]{0,5}")))
         self.lineEdit_feedrate.setValidator(valid_feed)
         self.lineEdit_stepover.setValidator(valid_step)
         self.lineEdit_size_x.setValidator(valid_size)
@@ -119,11 +139,11 @@ class Facing(QtWidgets.QWidget):
 
     def raster_changed(self):
         if self.rbtn_raster_0.isChecked():
-            pixmap = QtGui.QPixmap(os.path.join(IMAGES, 'raster_0.png'))
+            pixmap = QtGui.QPixmap(os.path.join(IMAGES, "raster_0.png"))
         elif self.rbtn_raster_45.isChecked():
-            pixmap = QtGui.QPixmap(os.path.join(IMAGES, 'raster_45.png'))
+            pixmap = QtGui.QPixmap(os.path.join(IMAGES, "raster_45.png"))
         elif self.rbtn_raster_90.isChecked():
-            pixmap = QtGui.QPixmap(os.path.join(IMAGES, 'raster_90.png'))
+            pixmap = QtGui.QPixmap(os.path.join(IMAGES, "raster_90.png"))
         self.lbl_image.setPixmap(pixmap)
 
     def validate(self):
@@ -181,9 +201,7 @@ class Facing(QtWidgets.QWidget):
         # check for valid stepover
         try:
             self.stepover = float(self.lineEdit_stepover.text())
-            if self.stepover == 0 \
-            or self.stepover > self.tool_dia \
-            or (self.stepover * 2) > min(self.size_x, self.size_y):
+            if self.stepover == 0 or self.stepover > self.tool_dia or (self.stepover * 2) > min(self.size_x, self.size_y):
                 self.valid = False
                 self.lbl_stepover_ok.setPixmap(self.unchecked)
             else:
@@ -191,16 +209,16 @@ class Facing(QtWidgets.QWidget):
         except:
             self.valid = False
             self.lbl_stepover_ok.setPixmap(self.unchecked)
-        
+
     def create_program(self):
         self.validate()
         if self.valid is False:
             print("There are errors in input fields")
-            STATUS.emit('error', OPERATOR_ERROR, "Facing: There are errors in the input fields")
+            STATUS.emit("error", OPERATOR_ERROR, "Facing: There are errors in the input fields")
             return
         options = QFileDialog.Options()
         options |= QFileDialog.DontUseNativeDialog
-        fileName, _ = QFileDialog.getSaveFileName(self,"Save to file","","All Files (*);;ngc Files (*.ngc)", options=options)
+        fileName, _ = QFileDialog.getSaveFileName(self, "Save to file", "", "All Files (*);;ngc Files (*.ngc)", options=options)
         if fileName:
             self.calculate_toolpath(fileName)
         else:
@@ -210,11 +228,11 @@ class Facing(QtWidgets.QWidget):
         self.validate()
         if self.valid is False:
             print("There are errors in input fields")
-            STATUS.emit('error', OPERATOR_ERROR, "Facing: There are errors in the input fields")
+            STATUS.emit("error", OPERATOR_ERROR, "Facing: There are errors in the input fields")
             return
         self._mktemp()
         if self._tmp:
-            mp = os.path.join(self._tmp, os.path.basename('face.ngc'))
+            mp = os.path.join(self._tmp, os.path.basename("face.ngc"))
             self.calculate_toolpath(mp)
             ACTION.OPEN_PROGRAM(mp)
         else:
@@ -223,12 +241,12 @@ class Facing(QtWidgets.QWidget):
     def calculate_toolpath(self, fname):
         comment = self.lineEdit_comment.text()
         self.line_num = 5
-        self.file = open(fname, 'w')
+        self.file = open(fname, "w")
         # opening preamble
         self.file.write("%\n")
         self.file.write("({})\n".format(comment))
         self.file.write("({})\n".format(self.units_text))
-        self.file.write("(Area: X {} by Y {})\n".format(self.size_x,self.size_y))
+        self.file.write("(Area: X {} by Y {})\n".format(self.size_x, self.size_y))
         self.file.write("({} Tool Diameter with {} Stepover)\n".format(self.tool_dia, self.stepover))
         self.file.write("\n")
         self.next_line("{} G40 G49 G64 P0.03".format(self.unit_code))
@@ -274,10 +292,10 @@ class Facing(QtWidgets.QWidget):
         # calculate coordinate arrays
         ysteps = int(self.size_y // self.stepover)
         xsteps = int(self.size_x // self.stepover)
-        left = np.empty(shape=(ysteps,2), dtype=float)
-        right = np.empty(shape=(ysteps,2), dtype=float)
-        bottom = np.empty(shape=(xsteps,2), dtype=float)
-        top = np.empty(shape=(xsteps,2), dtype=float)
+        left = np.empty(shape=(ysteps, 2), dtype=float)
+        right = np.empty(shape=(ysteps, 2), dtype=float)
+        bottom = np.empty(shape=(xsteps, 2), dtype=float)
+        top = np.empty(shape=(xsteps, 2), dtype=float)
         ycoord = self.stepover
         for i in range(ysteps):
             left[i][0] = 0.0
@@ -307,8 +325,8 @@ class Facing(QtWidgets.QWidget):
         # calculate toolpath
         while 1:
             self.next_line("X{} Y{}".format(array2[i][0], array2[i][1]))
-            if array2[i][1] == 0.0: # bottom row
-                if array2[i][0] == self.size_x: # bottom right corner
+            if array2[i][1] == 0.0:  # bottom row
+                if array2[i][0] == self.size_x:  # bottom right corner
                     self.next_line("Y{}".format(self.stepover))
                 elif (array2[i][0] + self.stepover) <= self.size_x:
                     self.next_line("G91 X{}".format(self.stepover))
@@ -316,7 +334,7 @@ class Facing(QtWidgets.QWidget):
                 else:
                     self.next_line("X{}".format(self.size_x))
                     self.next_line("Y{}".format(right[0][1]))
-            elif array2[i][0] == self.size_x: # right side
+            elif array2[i][0] == self.size_x:  # right side
                 if (array2[i][1] + self.stepover) <= self.size_y:
                     self.next_line("G91 Y{}".format(self.stepover))
                     self.next_line("G90")
@@ -326,10 +344,11 @@ class Facing(QtWidgets.QWidget):
                 print("FATAL ERROR")
                 return
             i += 1
-            if i == len(array1 + 1): break
+            if i == len(array1 + 1):
+                break
             self.next_line("X{} Y{}".format(array1[i][0], array1[i][1]))
-            if array1[i][0] == 0.0: # left side
-                if array1[i][1] == self.size_y: # top left corner
+            if array1[i][0] == 0.0:  # left side
+                if array1[i][1] == self.size_y:  # top left corner
                     self.next_line("X{}".format(self.stepover))
                 elif (array1[i][1] + self.stepover) <= self.size_y:
                     self.next_line("G91 Y{}".format(self.stepover))
@@ -337,7 +356,7 @@ class Facing(QtWidgets.QWidget):
                 else:
                     self.next_line("Y{}".format(self.size_y))
                     self.next_line("X{}".format(top[0][0]))
-            elif array1[i][1] == self.size_y: # top row
+            elif array1[i][1] == self.size_y:  # top row
                 if (array1[i][0] + self.stepover) <= self.size_x:
                     self.next_line("G91 X{}".format(self.stepover))
                     self.next_line("G90")
@@ -347,7 +366,8 @@ class Facing(QtWidgets.QWidget):
                 print("FATAL ERROR")
                 return
             i += 1
-            if i == len(array1): break
+            if i == len(array1):
+                break
 
     def raster_90(self):
         i = 1
@@ -369,12 +389,12 @@ class Facing(QtWidgets.QWidget):
     def _mktemp(self):
         if self._tmp:
             return
-        self._tmp = tempfile.mkdtemp(prefix='emcBCD-', suffix='.d')
+        self._tmp = tempfile.mkdtemp(prefix="emcBCD-", suffix=".d")
         atexit.register(lambda: shutil.rmtree(self._tmp))
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
     w = Facing()
     w.show()
-    sys.exit( app.exec_() )
-
+    sys.exit(app.exec_())
